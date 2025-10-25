@@ -1,0 +1,102 @@
+---
+title: "R_Folder"
+format: html
+editor: visual
+---
+
+# R Folder
+
+Here is all of the steps necessary to complete the data cleaning and visualizations.
+
+```{r}
+library("tidyverse")
+library("dplyr")
+library("ggplot2")
+library("scales")
+ED_data <-
+  read.csv("emergency-department-volume-and-capacity-2021-2023.csv", header = TRUE)
+ggplot2::map_data("state")
+head()
+```
+
+```{r}
+CA_map <- map_data("county", "California") |>
+  select(lon = long, lat, group, id = region)
+head(CA_map)
+```
+
+# Data Wrangling
+
+```{r}
+refined_ED_data <- ED_data |>
+  filter(!is.na(MentalHealthShortageArea)) |>
+  filter(Category == "Mental Health") |>
+  filter(year == 2022) |>
+  select(UrbanRuralDesi, Tot_ED_NmbVsts, 
+         EDDXCount, LATITUDE, LONGITUDE, MentalHealthShortageArea) |>
+  na.omit()
+```
+
+# Graph 1
+
+```{r}
+ggplot() +
+  geom_polygon(data = CA_map, 
+               mapping = aes(lon, lat, group = group), 
+                fill = "white", color = "grey50") +
+  geom_point(data = refined_ED_data, 
+             mapping = aes(LONGITUDE, 
+                           LATITUDE, 
+                          color = MentalHealthShortageArea), 
+             alpha = 0.8, size = 0.5) +
+  labs(x = "Longitude",
+       y = "Latitude", title = "Map of Emergency Departments in California with\nMental Health Related Cases, California, 2022",
+        color = "Is there a Mental\nHealth Area Shortage?") +  
+  guides(colour = guide_legend(override.aes = list(alpha = 1, size = 6, shape = "square")))
+```
+
+# Graph 2
+
+```{r}
+ggplot() +
+  geom_point(data = refined_ED_data,
+         mapping = aes(x = Tot_ED_NmbVsts, 
+                        y = EDDXCount,
+                       color = MentalHealthShortageArea)
+           ) + 
+  labs(x = "Total Number of ED Visits",
+       y = "Number of Mental Health ED Visits", 
+       title = "Mental Health Cases in Emergency Department Visits,\nCalifornia, 2022",
+       color = "Is there a Mental\nHealth Area Shortage?") +  
+  guides(colour = guide_legend(override.aes = list(alpha = 1, size = 6, shape = "square"))) +
+  scale_y_continuous(labels = label_comma()) +
+  scale_x_continuous(labels = label_comma()) +
+  coord_flip()
+```
+
+# Graph 3
+
+```{r}
+ggplot() +
+  geom_boxplot(data = refined_ED_data,
+               mapping = aes(x = EDDXCount,
+                             y = UrbanRuralDesi)) +
+   labs(x = "Number of Mental Health Emergency Department Visits",
+       y = "Urban-Rural Designation", 
+       title = "Burden of Mental Health Emergency Department Visits, California, 2022") +
+  scale_x_continuous(labels = label_comma())
+```
+
+# Graph 4
+
+```{r}
+ggplot() +
+  geom_col(data = refined_ED_data,
+           mapping = aes(x = MentalHealthShortageArea,
+                         y = mean(EDDXCount))) +
+  facet_wrap(~ UrbanRuralDesi) +
+  labs(x = "Is there a Mental Health Area Shortage?",
+       y = "Average Number of Mental Health Related ED Visits",
+       title = "ED Burden Based on Mental Health Shortages Across Geographic\nClassifications, California, 2022") +
+  scale_y_continuous(labels = label_comma())
+```
